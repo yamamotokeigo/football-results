@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { CalendarDays, RefreshCw, Send, Shield, Trash2 } from 'lucide-react';
 import './styles.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 function App() {
   const [teams, setTeams] = useState([]);

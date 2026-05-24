@@ -30,6 +30,45 @@ Open `http://localhost:5173`.
 
 The backend runs on `http://localhost:8081` by default.
 
+## Docker Desktop Run
+
+Build and start both containers from the repository root:
+
+```powershell
+docker compose up --build
+```
+
+Open `http://localhost:5173`.
+
+The compose setup runs:
+
+- `frontend`: React static files served by nginx on host port `5173`
+- `backend`: Spring Boot API on host port `8081`
+
+The frontend calls `/api`, and nginx proxies those requests to the backend container. The backend also exposes actuator health endpoints for future Kubernetes readiness and liveness probes:
+
+- `http://localhost:8081/actuator/health/readiness`
+- `http://localhost:8081/actuator/health/liveness`
+
+Stop the containers with:
+
+```powershell
+docker compose down
+```
+
+### Future Deployment Notes
+
+The backend datasource and CORS settings are controlled by environment variables so the same image can be moved toward Kubernetes and a managed database later:
+
+- `APP_CORS_ALLOWED_ORIGIN`
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_DRIVER_CLASS_NAME`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SPRING_JPA_HIBERNATE_DDL_AUTO`
+
+MySQL is not enabled yet. When introducing it, add the MySQL JDBC driver to the backend and set the datasource variables through Kubernetes `Secret` and `ConfigMap` values instead of baking them into the image.
+
 ## Transaction Learning Point
 
 `MatchService.recordMatch(...)` is annotated with `@Transactional`.
