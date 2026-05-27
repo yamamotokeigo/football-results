@@ -38,6 +38,10 @@ public class DataInitializer {
 
         @Transactional
         public void seed() {
+            if (teamRepository.count() > 0) {
+                return;
+            }
+
             Team sapporo = new Team("Sapporo North Stars", "SNS");
             Team tokyo = new Team("Tokyo United", "TKY");
             Team osaka = new Team("Osaka Azul", "OSA");
