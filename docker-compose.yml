@@ -1,4 +1,22 @@
 services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: football_results
+      MYSQL_USER: football
+      MYSQL_PASSWORD: football
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -ufootball -pfootball --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
   backend:
     build:
       context: ./backend
@@ -6,11 +24,14 @@ services:
     environment:
       SERVER_PORT: 8081
       APP_CORS_ALLOWED_ORIGIN: http://localhost:5173
-      SPRING_DATASOURCE_URL: jdbc:h2:mem:football;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.h2.Driver
-      SPRING_DATASOURCE_USERNAME: sa
-      SPRING_DATASOURCE_PASSWORD: ""
-      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/football_results?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_DATASOURCE_USERNAME: football
+      SPRING_DATASOURCE_PASSWORD: football
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      mysql:
+        condition: service_healthy
     ports:
       - "8081:8081"
     healthcheck:
@@ -37,3 +58,6 @@ services:
       timeout: 3s
       retries: 6
       start_period: 10s
+
+volumes:
+  mysql-data:
