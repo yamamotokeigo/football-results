@@ -23,8 +23,8 @@
 ```bash
 cd ~/football-results
 git fetch origin
-git checkout feature/ec2-http-deploy
-git pull origin feature/ec2-http-deploy
+git checkout main
+git pull origin main
 export EC2_PUBLIC_HOST=<current-ec2-public-ip>
 docker compose -f docker-compose.yml -f docker-compose.ec2.yml down
 docker compose -f docker-compose.yml -f docker-compose.ec2.yml up -d --build
@@ -47,8 +47,20 @@ docker compose -f docker-compose.yml -f docker-compose.ec2.yml ps
   - `EC2_USER`
   - `EC2_SSH_KEY`
   - `EC2_APP_DIR`
+  - `EC2_SECURITY_GROUP_ID`
+  - `AWS_ACCESS_KEY_ID`
+  - `AWS_SECRET_ACCESS_KEY`
+  - `AWS_REGION`
 - GitHub-hosted runners do not use the local client IP.
-- For the current SSH deployment approach, temporarily allow SSH from `0.0.0.0/0` before running the workflow, then restore it to the client IP after deployment.
+- The workflow temporarily allows SSH from the GitHub Actions runner IP, deploys over SSH, and removes that SSH rule afterward.
+- The AWS credentials used by the workflow should be limited to security group ingress updates for the EC2 security group.
+
+Minimum IAM actions for the current workflow:
+
+```text
+ec2:AuthorizeSecurityGroupIngress
+ec2:RevokeSecurityGroupIngress
+```
 
 ## Cost Control
 
@@ -59,10 +71,9 @@ docker compose -f docker-compose.yml -f docker-compose.ec2.yml ps
 
 ## Next Improvements
 
-1. Add a safer GitHub Actions deployment flow that temporarily opens SSH only for the runner IP.
-2. Add CloudWatch Logs or another simple log collection path.
-3. Move Docker image builds to ECR.
-4. Move MySQL from the local container to RDS MySQL.
-5. Introduce ALB and HTTPS.
-6. Move from Docker Compose on EC2 to ECS.
-7. Split dev and production environments after the low-cost deployment flow is stable.
+1. Add CloudWatch Logs or another simple log collection path.
+2. Move Docker image builds to ECR.
+3. Move MySQL from the local container to RDS MySQL.
+4. Introduce ALB and HTTPS.
+5. Move from Docker Compose on EC2 to ECS.
+6. Split dev and production environments after the low-cost deployment flow is stable.
