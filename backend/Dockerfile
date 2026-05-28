@@ -10,6 +10,7 @@ RUN mvn -B clean package -DskipTests
 FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
+RUN apk add --no-cache wget
 RUN addgroup -S app && adduser -S app -G app
 
 COPY --from=build /workspace/target/*.jar app.jar
