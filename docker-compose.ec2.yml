@@ -1,0 +1,12 @@
+services:
+  mysql:
+    ports: !override []
+
+  backend:
+    environment:
+      APP_CORS_ALLOWED_ORIGIN: http://${EC2_PUBLIC_HOST:-localhost}
+    ports: !override []
+
+  frontend:
+    ports: !override
+      - "80:80"
