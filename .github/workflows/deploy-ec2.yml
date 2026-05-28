@@ -3,7 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - feature/docker-setup
+      - main
   workflow_dispatch:
 
 jobs:
@@ -11,12 +11,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Detect GitHub Actions runner IP
+        id: runner-ip
+        shell: bash
+        run: echo "cidr=$(curl -s https://checkip.amazonaws.com)/32" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Allow SSH from runner IP
+        shell: bash
+        run: |
+          set -e
+          set +e
+          output=$(aws ec2 authorize-security-group-ingress \
+            --group-id "${{ secrets.EC2_SECURITY_GROUP_ID }}" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${{ steps.runner-ip.outputs.cidr }},Description='GitHub Actions deploy'}]" 2>&1)
+          authorize_status=$?
+          set -e
+          if [ "$authorize_status" -ne 0 ]; then
+            echo "$output"
+            if echo "$output" | grep -q "InvalidPermission.Duplicate"; then
+              echo "Continuing; the ingress rule already exists."
+              exit 0
+            fi
+            exit "$authorize_status"
+          fi
+
       - name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 30m
           script: |
             set -e
             cd "${{ secrets.EC2_APP_DIR }}"
@@ -27,3 +59,14 @@ jobs:
             docker compose -f docker-compose.yml -f docker-compose.ec2.yml down
             docker compose -f docker-compose.yml -f docker-compose.ec2.yml up -d --build
             docker compose -f docker-compose.yml -f docker-compose.ec2.yml ps
+
+      - name: Remove SSH access for runner IP
+        if: always()
+        shell: bash
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id "${{ secrets.EC2_SECURITY_GROUP_ID }}" \
+            --protocol tcp \
+            --port 22 \
+            --cidr "${{ steps.runner-ip.outputs.cidr }}" \
+          || echo "SSH ingress rule was already absent."
