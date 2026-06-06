@@ -62,6 +62,35 @@ ec2:AuthorizeSecurityGroupIngress
 ec2:RevokeSecurityGroupIngress
 ```
 
+## CloudWatch Logs
+
+- EC2 Docker Compose uses the `awslogs` logging driver in `docker-compose.ec2.yml`.
+- Container logs are sent to the log group:
+
+```text
+/football-results/ec2
+```
+
+- Current log streams:
+  - `frontend`
+  - `backend`
+  - `mysql`
+
+The EC2 instance needs an IAM role that allows Docker to write logs to CloudWatch Logs. Minimum actions:
+
+```text
+logs:CreateLogGroup
+logs:CreateLogStream
+logs:DescribeLogStreams
+logs:PutLogEvents
+```
+
+After deployment, logs can be checked from:
+
+```text
+AWS Console -> CloudWatch -> Logs -> Log groups -> /football-results/ec2
+```
+
 ## Cost Control
 
 - Confirm the EC2 instance is stopped when finished.
@@ -71,9 +100,8 @@ ec2:RevokeSecurityGroupIngress
 
 ## Next Improvements
 
-1. Add CloudWatch Logs or another simple log collection path.
-2. Move Docker image builds to ECR.
-3. Move MySQL from the local container to RDS MySQL.
-4. Introduce ALB and HTTPS.
-5. Move from Docker Compose on EC2 to ECS.
-6. Split dev and production environments after the low-cost deployment flow is stable.
+1. Move Docker image builds to ECR.
+2. Move MySQL from the local container to RDS MySQL.
+3. Introduce ALB and HTTPS.
+4. Move from Docker Compose on EC2 to ECS.
+5. Split dev and production environments after the low-cost deployment flow is stable.
