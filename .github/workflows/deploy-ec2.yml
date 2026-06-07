@@ -14,7 +14,15 @@ jobs:
       - name: Detect GitHub Actions runner IP
         id: runner-ip
         shell: bash
-        run: echo "cidr=$(curl -s https://checkip.amazonaws.com)/32" >> "$GITHUB_OUTPUT"
+        run: |
+          set -e
+          runner_ip="$(curl -fsS https://checkip.amazonaws.com || curl -fsS https://api.ipify.org)"
+          runner_ip="$(echo "$runner_ip" | tr -d '[:space:]')"
+          if [ -z "$runner_ip" ]; then
+            echo "Failed to detect GitHub Actions runner public IP." >&2
+            exit 1
+          fi
+          echo "cidr=$runner_ip/32" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
