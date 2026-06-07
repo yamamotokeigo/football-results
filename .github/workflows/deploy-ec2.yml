@@ -42,6 +42,36 @@ jobs:
             exit "$authorize_status"
           fi
 
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        env:
+          ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+          ECR_BACKEND_REPOSITORY: ${{ secrets.ECR_BACKEND_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -e
+          docker build -t "$ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$IMAGE_TAG" ./backend
+          docker tag "$ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$IMAGE_TAG" "$ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:latest"
+          docker push "$ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:latest"
+
+      - name: Build and push frontend image
+        env:
+          ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+          ECR_FRONTEND_REPOSITORY: ${{ secrets.ECR_FRONTEND_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -e
+          docker build --build-arg VITE_API_BASE_URL=/api -t "$ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$IMAGE_TAG" ./frontend
+          docker tag "$ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$IMAGE_TAG" "$ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:latest"
+          docker push "$ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:latest"
+
       - name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -57,8 +87,14 @@ jobs:
             git pull origin "${{ github.ref_name }}"
             export EC2_PUBLIC_HOST="${{ secrets.EC2_HOST }}"
             export AWS_REGION="${{ secrets.AWS_REGION }}"
+            export ECR_REGISTRY="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com"
+            export ECR_BACKEND_REPOSITORY="${{ secrets.ECR_BACKEND_REPOSITORY }}"
+            export ECR_FRONTEND_REPOSITORY="${{ secrets.ECR_FRONTEND_REPOSITORY }}"
+            export IMAGE_TAG="${{ github.sha }}"
+            aws ecr get-login-password --region "${{ secrets.AWS_REGION }}" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
             docker compose -f docker-compose.yml -f docker-compose.ec2.yml down
-            docker compose -f docker-compose.yml -f docker-compose.ec2.yml up -d --build
+            docker compose -f docker-compose.yml -f docker-compose.ec2.yml pull backend frontend
+            docker compose -f docker-compose.yml -f docker-compose.ec2.yml up -d
             docker compose -f docker-compose.yml -f docker-compose.ec2.yml ps
 
       - name: Remove SSH access for runner IP
