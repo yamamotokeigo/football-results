@@ -17,6 +17,8 @@ services:
         awslogs-stream: mysql
 
   backend:
+    build: !reset null
+    image: ${ECR_REGISTRY}/${ECR_BACKEND_REPOSITORY}:${IMAGE_TAG:-latest}
     environment:
       APP_CORS_ALLOWED_ORIGIN: http://${EC2_PUBLIC_HOST:-localhost}
     ports: !override []
@@ -29,6 +31,8 @@ services:
         awslogs-stream: backend
 
   frontend:
+    build: !reset null
+    image: ${ECR_REGISTRY}/${ECR_FRONTEND_REPOSITORY}:${IMAGE_TAG:-latest}
     ports: !override
       - "80:80"
     logging:

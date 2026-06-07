@@ -50,7 +50,10 @@ docker compose -f docker-compose.yml -f docker-compose.ec2.yml ps
   - `EC2_SECURITY_GROUP_ID`
   - `AWS_ACCESS_KEY_ID`
   - `AWS_SECRET_ACCESS_KEY`
+  - `AWS_ACCOUNT_ID`
   - `AWS_REGION`
+  - `ECR_BACKEND_REPOSITORY`
+  - `ECR_FRONTEND_REPOSITORY`
 - GitHub-hosted runners do not use the local client IP.
 - The workflow temporarily allows SSH from the GitHub Actions runner IP, deploys over SSH, and removes that SSH rule afterward.
 - The AWS credentials used by the workflow should be limited to security group ingress updates for the EC2 security group.
@@ -91,6 +94,22 @@ After deployment, logs can be checked from:
 AWS Console -> CloudWatch -> Logs -> Log groups -> /football-results/ec2
 ```
 
+## ECR
+
+- GitHub Actions builds frontend and backend images and pushes them to ECR.
+- EC2 pulls the pushed images instead of building Docker images locally.
+- Current ECR repository secrets:
+  - `ECR_BACKEND_REPOSITORY`
+  - `ECR_FRONTEND_REPOSITORY`
+
+The GitHub Actions IAM user needs ECR push access. For the current learning setup, `AmazonEC2ContainerRegistryPowerUser` is acceptable.
+
+The EC2 instance role needs ECR pull access:
+
+```text
+AmazonEC2ContainerRegistryReadOnly
+```
+
 ## Cost Control
 
 - Confirm the EC2 instance is stopped when finished.
@@ -100,8 +119,7 @@ AWS Console -> CloudWatch -> Logs -> Log groups -> /football-results/ec2
 
 ## Next Improvements
 
-1. Move Docker image builds to ECR.
-2. Move MySQL from the local container to RDS MySQL.
-3. Introduce ALB and HTTPS.
-4. Move from Docker Compose on EC2 to ECS.
-5. Split dev and production environments after the low-cost deployment flow is stable.
+1. Move MySQL from the local container to RDS MySQL.
+2. Introduce ALB and HTTPS.
+3. Move from Docker Compose on EC2 to ECS.
+4. Split dev and production environments after the low-cost deployment flow is stable.
