@@ -7,6 +7,8 @@ x-awslogs-defaults: &awslogs-defaults
 
 services:
   mysql:
+    profiles:
+      - local-mysql
     ports: !override []
     logging:
       <<: *awslogs-defaults
@@ -19,8 +21,13 @@ services:
   backend:
     build: !reset null
     image: ${ECR_REGISTRY}/${ECR_BACKEND_REPOSITORY}:${IMAGE_TAG:-latest}
+    depends_on: !override []
     environment:
       APP_CORS_ALLOWED_ORIGIN: http://${EC2_PUBLIC_HOST:-localhost}
+      SPRING_DATASOURCE_URL: jdbc:mysql://${RDS_ENDPOINT}:3306/${RDS_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${RDS_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${RDS_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     ports: !override []
     logging:
       <<: *awslogs-defaults
