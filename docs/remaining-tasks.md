@@ -26,8 +26,18 @@ git fetch origin
 git checkout main
 git pull origin main
 export EC2_PUBLIC_HOST=<current-ec2-public-ip>
-docker compose -f docker-compose.yml -f docker-compose.ec2.yml down
-docker compose -f docker-compose.yml -f docker-compose.ec2.yml up -d --build
+export AWS_REGION=<aws-region>
+export ECR_REGISTRY=<aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com
+export ECR_BACKEND_REPOSITORY=football-results-backend
+export ECR_FRONTEND_REPOSITORY=football-results-frontend
+export IMAGE_TAG=latest
+export RDS_ENDPOINT=<rds-endpoint>
+export RDS_DATABASE=football_results
+export RDS_USERNAME=football
+export RDS_PASSWORD=<rds-password>
+docker compose -f docker-compose.yml -f docker-compose.ec2.yml down --remove-orphans
+docker compose -f docker-compose.yml -f docker-compose.ec2.yml pull backend frontend
+docker compose -f docker-compose.yml -f docker-compose.ec2.yml up -d
 docker compose -f docker-compose.yml -f docker-compose.ec2.yml ps
 ```
 
@@ -54,6 +64,10 @@ docker compose -f docker-compose.yml -f docker-compose.ec2.yml ps
   - `AWS_REGION`
   - `ECR_BACKEND_REPOSITORY`
   - `ECR_FRONTEND_REPOSITORY`
+  - `RDS_ENDPOINT`
+  - `RDS_DATABASE`
+  - `RDS_USERNAME`
+  - `RDS_PASSWORD`
 - GitHub-hosted runners do not use the local client IP.
 - The workflow temporarily allows SSH from the GitHub Actions runner IP, deploys over SSH, and removes that SSH rule afterward.
 - The AWS credentials used by the workflow should be limited to security group ingress updates for the EC2 security group.
@@ -110,6 +124,23 @@ The EC2 instance role needs ECR pull access:
 AmazonEC2ContainerRegistryReadOnly
 ```
 
+## RDS MySQL
+
+- EC2 deployment uses RDS MySQL instead of the local MySQL container.
+- `docker-compose.ec2.yml` disables the MySQL service by putting it behind the `local-mysql` profile.
+- Backend datasource settings are injected from GitHub Secrets during deployment.
+- RDS should not be publicly accessible.
+- RDS Security Group should allow MySQL/Aurora port `3306` only from the EC2 Security Group.
+
+Required repository secrets:
+
+```text
+RDS_ENDPOINT
+RDS_DATABASE
+RDS_USERNAME
+RDS_PASSWORD
+```
+
 ## Cost Control
 
 - Confirm the EC2 instance is stopped when finished.
@@ -119,7 +150,6 @@ AmazonEC2ContainerRegistryReadOnly
 
 ## Next Improvements
 
-1. Move MySQL from the local container to RDS MySQL.
-2. Introduce ALB and HTTPS.
-3. Move from Docker Compose on EC2 to ECS.
-4. Split dev and production environments after the low-cost deployment flow is stable.
+1. Introduce ALB and HTTPS.
+2. Move from Docker Compose on EC2 to ECS.
+3. Split dev and production environments after the low-cost deployment flow is stable.
